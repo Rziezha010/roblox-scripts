@@ -1,93 +1,81 @@
--- FLY SCRIPT MOBILE (DENGAN TOMBOL SELEKSI KHUSUS DI KANAN BAWAH)
+-- ========================================================
+-- SCRIPT TERBANG MOBILE (VERSI FINAL - KOREKSI TOTAL ANTI-GAGAL)
+-- ========================================================
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("InputService") or game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local root = character:WaitForChild("HumanoidRootPart")
 local camera = workspace.CurrentCamera
 
-local speed = 70 -- Kecepatan terbang
+local speed = 70 -- Kecepatan terbang default
 local isFlyingAndMoving = false
 
--- Bersihkan objek fisik lama jika ada
-if root:FindFirstChild("FlyVelocity") then root.FlyVelocity:Destroy() end
-if root:FindFirstChild("FlyGyro") then root.FlyGyro:Destroy() end
+-- Fungsi Utama untuk Menyiapkan Fisika Terbang pada Karakter
+local function setupPhysics(character)
+    if not character then return end
+    local root = character:WaitForChild("HumanoidRootPart", 10)
+    if not root then return end
+    
+    -- Bersihkan objek lama agar tidak menumpuk
+    if root:FindFirstChild("FlyVelocity") then root.FlyVelocity:Destroy() end
+    if root:FindFirstChild("FlyGyro") then root.FlyGyro:Destroy() end
 
-local bodyVelocity = Instance.new("BodyVelocity")
-bodyVelocity.Name = "FlyVelocity"
-bodyVelocity.MaxForce = Vector3.new(1e9, 1e9, 1e9)
-bodyVelocity.Parent = root
+    local bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.Name = "FlyVelocity"
+    bodyVelocity.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    bodyVelocity.Parent = root
 
-local bodyGyro = Instance.new("BodyGyro")
-bodyGyro.Name = "FlyGyro"
-bodyGyro.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
-bodyGyro.Parent = root
+    local bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.Name = "FlyGyro"
+    bodyGyro.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+    bodyGyro.CFrame = camera.CFrame
+    bodyGyro.Parent = root
 
--- MEMBUAT FRAME GUI BARU YANG LEBIH RAPI
-local ScreenGui = Instance.new("ScreenGui")
-pcall(function() ScreenGui.Parent = CoreGui end)
-if not ScreenGui.Parent then
-    ScreenGui.Parent = player:WaitForChild("PlayerGui")
+    return bodyVelocity, bodyGyro, root
 end
 
-local FlyButton = Instance.new("TextButton")
-FlyButton.Name = "FlyControlButton"
--- Ukuran disesuaikan jadi lebih pas untuk jempol HP (60x60)
-FlyButton.Size = UDim2.new(0, 60, 0, 60)
--- Posisi dipindah ke kanan bawah (Dekat area tombol lompat default)
-FlyButton.Position = UDim2.new(0.85, -10, 0.65, -10) 
-FlyButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-FlyButton.BackgroundTransparency = 0.4 -- Transparan elegan agar tidak menutupi map
--- Desain Teks
-FlyButton.Text = "FLY"
-FlyButton.TextColor3 = Color3.fromRGB(0, 255, 150) -- Teks warna hijau neon terang
-FlyButton.TextSize = 16
-FlyButton.Font = Enum.Font.SourceSansBold
-FlyButton.Active = true
-FlyButton.Draggable = true -- Tetap bisa digeser manual jika kurang pas
-FlyButton.Parent = ScreenGui
+-- Ambil karakter saat ini dan siapkan fisika awal
+local currentCharacter = player.Character or player.CharacterAdded:Wait()
+local bodyVelocity, bodyGyro, root = setupPhysics(currentCharacter)
 
--- Efek Sudut Bulat Sempurna
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(1, 0)
-UICorner.Parent = FlyButton
-
--- Efek Garis Pinggir (Glow UI)
-local UIStroke = Instance.new("UIStroke")
-UIStroke.Color = Color3.fromRGB(0, 255, 150)
-UIStroke.Thickness = 2
-UIStroke.Parent = FlyButton
-
--- Logika Sentuhan Tombol Mobile
-FlyButton.MouseButton1Down:Connect(function()
-    isFlyingAndMoving = true
-    FlyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    UIStroke.Color = Color3.fromRGB(255, 50, 50) -- Pinggiran berubah merah saat ditekan
-end)
-
-FlyButton.MouseButton1Up:Connect(function()
-    isFlyingAndMoving = false
-    FlyButton.TextColor3 = Color3.fromRGB(0, 255, 150)
-    UIStroke.Color = Color3.fromRGB(0, 255, 150) -- Kembali ke hijau semula
-end)
-
-FlyButton.MouseLeave:Connect(function()
-    isFlyingAndMoving = false
-    FlyButton.TextColor3 = Color3.fromRGB(0, 255, 150)
-    UIStroke.Color = Color3.fromRGB(0, 255, 150)
-end)
-
--- Anti-Mogok pas mati (Respawn Handler)
+-- Otomatis aktifkan kembali fisika terbang saat karakter respawn/mati
 player.CharacterAdded:Connect(function(newChar)
     task.wait(0.5)
-    character = newChar
-    root = character:WaitForChild("HumanoidRootPart")
-    if bodyVelocity and bodyGyro and root then
-        bodyVelocity.Parent = root
-        bodyGyro.Parent = root
-    end
+    bodyVelocity, bodyGyro, root = setupPhysics(newChar)
 end)
 
--- Loop Per
+-- ========================================================
+-- PEMBUATAN GUI LAYAR MOBILE (DIJAMIN MUNCUL DI SEMUA EXECUTOR)
+-- ========================================================
+local playerGui = player:WaitForChild("PlayerGui", 10)
+if playerGui then
+    -- Hapus GUI lama jika sempat terpasang agar tidak menumpuk
+    if playerGui:FindFirstChild("FlyScreenGui") then
+        playerGui.FlyScreenGui:Destroy()
+    end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "FlyScreenGui"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.Parent = playerGui
+
+    local FlyButton = Instance.new("TextButton")
+    FlyButton.Name = "FlyControlButton"
+    FlyButton.Size = UDim2.new(0, 80, 0, 80) -- Ukuran pas dan besar di layar HP
+    FlyButton.Position = UDim2.new(0.75, 0, 0.35, 0) -- Posisi aman di area kanan tengah layar (di atas tombol jump)
+    FlyButton.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    FlyButton.BackgroundTransparency = 0.3
+    FlyButton.Text = "FLY"
+    FlyButton.TextColor3 = Color3.fromRGB(0, 255, 150) -- Hijau neon menyala
+    FlyButton.TextSize = 22
+    FlyButton.Font = Enum.Font.SourceSansBold
+    FlyButton.Active = true
+    FlyButton.Draggable = true -- Bisa Anda geser manual jika posisinya menutupi tombol game
+    FlyButton.Parent = ScreenGui
+
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(1, 0)
