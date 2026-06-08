@@ -1,5 +1,6 @@
+
 -- ==================================================
--- 🧠 NPC SISTEM CERDAS - DEV.GIGA V I (OPTIMIZED)
+-- 🧠 NPC SISTEM CERDAS - V1.1 STABLE PATCH
 -- ==================================================
 
 local npc = script.Parent
@@ -10,9 +11,8 @@ local head = npc:WaitForChild("Head")
 humanoid.BreakJointsOnDeath = false
 humanoid.RequiresNeck = false
 
--- Mengamankan network owner agar fisiknya mulus dikontrol server
 pcall(function()
-	if root:GetNetworkOwner() ~= nil then
+	if root:GetNetworkOwner() then
 		root:SetNetworkOwner(nil)
 	end
 end)
@@ -30,16 +30,17 @@ local Settings = {
 	FollowRange = 25,
 	SafeDistance = 3,
 	RoamRange = 50,
-	MoodChangeSpeed = 0.2,
+	MoodChangeSpeed = 0.15,
 	ChatCooldown = 4,
-	UpdateRate = 0.5
+	UpdateRate = 0.5,
+	PathCooldown = 0.8
 }
 
 -- =========================
 -- 📊 DATA
 -- =========================
 local mood = 100
-local memory = {} 
+local memory = {}
 local lastChatTime = 0
 local lastPathTime = 0
 local isClimbing = false
@@ -47,85 +48,93 @@ local isClimbing = false
 local favoritePlace = root.Position + Vector3.new(math.random(-50,50),0,math.random(-50,50))
 
 -- =========================
--- 😄 EMOTICON SYSTEM
+-- 😄 EMOJI
 -- =========================
 local emoticons = {
-	happy = {"😊", "😄", "😁", "😆"},
-	sad = {"😔", "🥲", "😢"},
-	surprise = {"😲", "😳", "😯"},
-	calm = {"🙂", "😌"}
+	happy = {"😊","😄","😁","😆"},
+	sad = {"😔","🥲","😢"},
+	surprise = {"😲","😳"},
+	calm = {"🙂","😌"}
 }
 
 local function getEmoji(type)
-	return emoticons[type][math.random(#emoticons[type])]
+	return emoticons[type] and emoticons[type][math.random(#emoticons[type])] or ""
 end
 
 -- =========================
--- 💬 DIALOG (REVISI: Emoji dilepas agar dinamis saat dipanggil)
+-- 💬 DIALOG
 -- =========================
 local personality = {
 	newPlayer = {
-		happy = {"Halo pemain baru!", "Wih ada pendatang baru!", "Senang ketemu kamu!"},
-		sad = {"Halo...", "Aku lagi agak sepi nih..."}
+		happy = {"Halo pemain baru!", "Wih ada pendatang baru!", "Senang ketemu kamu!"}
 	},
 	oldPlayer = {
-		happy = {"Kamu lagi!", "Asik ketemu kamu lagi! 😆"},
-		sad = {"Akhirnya kamu balik...", "Aku kangen kamu tadi..."}
+		happy = {"Kamu lagi!", "Asik ketemu kamu lagi!"},
+		sad = {"Akhirnya kamu balik...", "Aku kangen kamu..."}
 	},
 	roaming = {
 		happy = {"Enak banget suasananya", "Jalan-jalan santai..."},
-		complain = {"Sepi banget...", "Gak ada teman ngobrol..."},
-		favorite = {"Tempat favoritku...", "Akhirnya tenang di sini."}
+		complain = {"Sepi banget...", "Gak ada teman..."},
+		favorite = {"Tempat favoritku...", "Akhirnya tenang..."}
 	}
 }
 
 -- =========================
--- 🛠️ UTIL
+-- UTIL
 -- =========================
-local function pick(list)
-	return list[math.random(#list)]
+local function pick(t)
+	return t[math.random(#t)]
 end
 
--- REVISI: Fungsi say sekarang otomatis menempelkan emoji acak di akhir teks
 local function say(text, moodType)
 	if not text then return end
 	if os.clock() - lastChatTime < Settings.ChatCooldown then return end
 
 	lastChatTime = os.clock()
-	
-	local gabungTeks = text
+
+	local msg = text
 	if moodType then
-		gabungTeks = text .. " " .. getEmoji(moodType)
+		msg = text .. " " .. getEmoji(moodType)
 	end
-	
-	Chat:Chat(head, gabungTeks, Enum.ChatColor.White)
+
+	Chat:Chat(head, msg, Enum.ChatColor.White)
 end
 
 -- =========================
--- 👁️ VISIBILITY CHECK
+-- VISIBILITY (FIXED SAFE RAYCAST)
 -- =========================
 local function canSee(targetPart)
+	if not targetPart then return false end
+
 	local origin = head.Position
-	local direction = (targetPart.Position - origin).Unit * Settings.VisionRange
+	local dir = (targetPart.Position - origin)
+
+	if dir.Magnitude > Settings.VisionRange then
+		return false
+	end
 
 	local params = RaycastParams.new()
 	params.FilterDescendantsInstances = {npc}
 	params.FilterType = Enum.RaycastFilterType.Exclude
 
-	local result = workspace:Raycast(origin, direction, params)
-	return not result or result.Instance:IsDescendantOf(targetPart.Parent)
+	local result = workspace:Raycast(origin, dir, params)
+
+	if result then
+		return result.Instance:IsDescendantOf(targetPart.Parent)
+	end
+
+	return true
 end
 
 -- =========================
--- 🚶 PATH SYSTEM (REVISI: Menggunakan task.spawn agar anti-lag)
+-- MOVE SYSTEM (ANTI-SPAM FIX)
 -- =========================
-local function moveSmart(targetPosition)
-	if os.clock() - lastPathTime < 0.7 then return end
+local function moveSmart(target)
+	if os.clock() - lastPathTime < Settings.PathCooldown then return end
 	lastPathTime = os.clock()
 
-	if (root.Position - targetPosition).Magnitude < Settings.SafeDistance then return end
+	if (root.Position - target).Magnitude < Settings.SafeDistance then return end
 
-	-- Dibungkus task.spawn agar looping jalan tidak menyumbat main loop script
 	task.spawn(function()
 		local path = PathfindingService:CreatePath({
 			AgentRadius = 2,
@@ -134,25 +143,26 @@ local function moveSmart(targetPosition)
 			AgentCanClimb = true
 		})
 
-		path:ComputeAsync(root.Position, targetPosition)
+		local ok = pcall(function()
+			path:ComputeAsync(root.Position, target)
+		end)
 
-		if path.Status == Enum.PathStatus.Success then
-			local waypoints = path:GetWaypoints()
-			-- Cukup ambil waypoint terdekat agar gerakan dinamis mengikuti target yang bergerak
-			if waypoints[2] then
-				humanoid:MoveTo(waypoints[2].Position)
-				if waypoints[2].Action == Enum.PathAction.Jump then
+		if ok and path.Status == Enum.PathStatus.Success then
+			local wp = path:GetWaypoints()
+			if wp[2] then
+				humanoid:MoveTo(wp[2].Position)
+				if wp[2].Action == Enum.PathAction.Jump then
 					humanoid.Jump = true
 				end
 			end
 		else
-			humanoid:MoveTo(targetPosition)
+			humanoid:MoveTo(target)
 		end
 	end)
 end
 
 -- =========================
--- 🌳 CLIMB SYSTEM
+-- CLIMB FIX (NO FREEZE RISK)
 -- =========================
 local function tryClimb()
 	if isClimbing then return end
@@ -169,25 +179,30 @@ local function tryClimb()
 	if result and result.Instance then
 		local name = string.lower(result.Instance.Name)
 
-		if string.find(name,"tree") or string.find(name,"trunk") then
+		if name:find("tree") or name:find("trunk") then
 			isClimbing = true
 			humanoid:ChangeState(Enum.HumanoidStateType.Climbing)
-			root.AssemblyLinearVelocity = Vector3.new(0,25,0)
-			task.wait(0.4)
-			isClimbing = false
+			root.AssemblyLinearVelocity = Vector3.new(0,22,0)
+
+			task.delay(0.5, function()
+				isClimbing = false
+			end)
 		end
 	end
 end
 
 -- =========================
--- 👤 PLAYER FINDER
+-- PLAYER FINDER
 -- =========================
 local function getClosestPlayer()
 	local closest, dist = nil, math.huge
 
 	for _, p in ipairs(Players:GetPlayers()) do
-		if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-			local d = (p.Character.HumanoidRootPart.Position - root.Position).Magnitude
+		local c = p.Character
+		local hrp = c and c:FindFirstChild("HumanoidRootPart")
+
+		if hrp then
+			local d = (hrp.Position - root.Position).Magnitude
 			if d < dist then
 				dist = d
 				closest = p
@@ -199,58 +214,53 @@ local function getClosestPlayer()
 end
 
 -- =========================
--- 🧠 MAIN LOOP
+-- MAIN LOOP
 -- =========================
-while true do
-	task.wait(Settings.UpdateRate)
-
+while task.wait(Settings.UpdateRate) do
 	local player, dist = getClosestPlayer()
 
 	if player and player.Character then
 		local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-		
-		-- REVISI: Cek validasi penglihatan dulu sebelum memproses memory & pergerakan
+
 		if hrp and dist < Settings.VisionRange and canSee(hrp) then
-			
-			-- REVISI: Memory dihitung berdasar player yang BENAR-BENAR TERLIHAT
+
 			if not memory[player.UserId] then
-				memory[player.UserId] = { name = player.Name, count = 1 }
-			else
-				-- Batasi penambahan counter agar tidak meledak angkanya setiap 0.5 detik
-				if os.clock() - lastChatTime > Settings.ChatCooldown then
-					memory[player.UserId].count = memory[player.UserId].count + 1
-				end
+				memory[player.UserId] = {count = 1, last = os.clock()}
+			elseif os.clock() - memory[player.UserId].last > 3 then
+				memory[player.UserId].count += 1
+				memory[player.UserId].last = os.clock()
 			end
 
 			if dist < Settings.FollowRange then
 				moveSmart(hrp.Position)
-				mood = math.min(mood + 0.3, 100)
+				mood = math.min(mood + 0.2, 100)
 
 				if dist < Settings.ChatRange then
-					if memory[player.UserId].count == 1 then
-						if mood > 50 then say(pick(personality.newPlayer.happy), "happy") else say(pick(personality.newPlayer.sad), "sad") end
+					local mem = memory[player.UserId]
+
+					if mem.count == 1 then
+						say(pick(personality.newPlayer.happy), "happy")
 					else
-						if mood > 50 then say(pick(personality.oldPlayer.happy), "happy") else say(pick(personality.oldPlayer.sad), "sad") end
+						say(pick(personality.oldPlayer.happy), "happy")
 					end
 				end
 
-				if dist < 12 then tryClimb() end
+				if dist < 12 then
+					tryClimb()
+				end
 			end
+
 		else
-			-- Ada player tapi tidak kelihatan/jauh
 			mood = math.max(mood - Settings.MoodChangeSpeed, 0)
 		end
+
 	else
-		-- Roaming total (Sepi)
+		-- roaming
 		mood = math.max(mood - 0.1, 0)
 
 		if mood < 40 then
 			moveSmart(favoritePlace)
-			if math.random() < 0.1 then
-				say(pick(personality.roaming.favorite), "calm")
-			end
 		else
-			-- Buat titik random baru hanya sesekali agar jalannya tidak patah-patah berganti arah
 			if math.random() < 0.2 then
 				favoritePlace = root.Position + Vector3.new(
 					math.random(-Settings.RoamRange, Settings.RoamRange),
@@ -262,8 +272,8 @@ while true do
 		end
 	end
 
-	-- Random chat ringan saat roaming santai
-	if math.random() < 0.05 then
+	-- random idle chat
+	if math.random() < 0.04 then
 		if mood > 60 then
 			say(pick(personality.roaming.happy), "happy")
 		elseif mood < 30 then
