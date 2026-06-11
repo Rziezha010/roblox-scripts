@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dev.Giga - Web Development Service</title>
+
+  <!-- FONT UPGRADE -->
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #0D1117;
+      --primary: #00D4FF;
+      --accent: #A855F7;
+      --text: #FFFFFF;
+      --muted: #B0B0B0;
+      --card: #161B22;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+
+      animation: fadeBody 1.2s ease-in-out;
+    }
+
+    @keyframes fadeBody {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    header {
+      text-align: center;
+      padding: 60px 20px;
+      animation: slideDown 1s ease;
+    }
+
+    @keyframes slideDown {
+      from { transform: translateY(-40px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .logo {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 45px;
+      color: var(--primary);
+      animation: glow 2s infinite alternate, float 3s ease-in-out infinite;
+      text-shadow: 0 0 10px var(--primary);
+    }
+
+    @keyframes glow {
+      from { text-shadow: 0 0 5px var(--primary); }
+      to { text-shadow: 0 0 20px var(--primary); }
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-5px); }
+    }
+
+    .tagline {
+      color: var(--muted);
+      margin-top: 10px;
+      animation: fadeIn 2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    section {
+      max-width: 1000px;
+      margin: auto;
+      padding: 40px 20px;
+    }
+
+    h2 {
+      color: var(--primary);
+      margin-bottom: 20px;
+      font-size: 22px;
+      animation: fadeIn 1s ease;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+    }
+
+    .card {
+      background: var(--card);
+      padding: 15px;
+      border-left: 3px solid var(--accent);
+      border-radius: 10px;
+      transition: 0.3s;
+      animation: cardPop 0.8s ease;
+    }
+
+    @keyframes cardPop {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      border-left: 3px solid var(--primary);
+      box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+    }
+
+    .btn {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 10px 15px;
+      background: var(--primary);
+      color: black;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: bold;
+      transition: 0.3s;
+      animation: fadeIn 1.5s ease;
+    }
+
+    .btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 10px var(--primary);
+    }
+
+    footer {
+      text-align: center;
+      padding: 30px;
+      color: var(--muted);
+      font-size: 13px;
+      animation: fadeIn 2s ease;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">Dev.Giga</div>
+  <div class="tagline">Modern Web Development & Custom System Service</div>
+</header>
+
+<section>
+  <h2>🧠 Tentang Dev.Giga</h2>
+  <div class="card">
+    Dev.Giga adalah layanan pengembangan website dan sistem digital modern yang berfokus pada pembuatan website, API, backend, dan aplikasi custom dengan desain futuristik dan performa tinggi.
+  </div>
+</section>
+
+<section>
+  <h2>⚙️ Layanan Lengkap</h2>
+  <div class="grid">
+
+    <div class="card">🌐 Website Development<br>Landing page, company profile, UMKM, portfolio</div>
+    <div class="card">🧠 Web Application System<br>Login, register, dashboard, CRUD system</div>
+    <div class="card">🔗 Backend & API<br>REST API, server custom, integrasi database</div>
+    <div class="card">🗄️ Database System<br>MySQL, SQLite, data management system</div>
+    <div class="card">🎨 Frontend UI<br>HTML, CSS, JS modern & responsive design</div>
+    <div class="card">🎮 Lua Script Service<br>Automation, game server scripting</div>
+    <div class="card">⚙️ Custom System<br>Sistem sesuai request client</div>
+    <div class="card">🔐 Security System<br>Login system, token, role access</div>
+    <div class="card">📊 Dashboard System<br>Admin panel & user dashboard</div>
+    <div class="card">🔌 API Integration<br>Integrasi API eksternal & internal</div>
+
+  </div>
+</section>
+
+<section>
+  <h2>💡 Paket Layanan</h2>
+  <div class="grid">
+
+    <div class="card">🟢 Basic<br>Landing page + UI website modern</div>
+    <div class="card">🔵 Standard<br>Website + login + database + dashboard</div>
+    <div class="card">🔴 Premium<br>Full system + backend + API + custom logic</div>
+
+  </div>
+</section>
+
+<section>
+  <h2>📱 Contact</h2>
+
+  <div class="card">📱 WhatsApp: 085925115266</div>
+
+  <a class="btn" href="https://chat.whatsapp.com/KznMbJEGxbxECxaDAga8P8">WhatsApp Group</a>
+  <a class="btn" href="https://discord.gg/FeQX5paF7">Discord Community</a>
+  <a class="btn" href="https://tiktok.me/group/ZSQJg6xqp/">TikTok Group</a>
+</section>
+
+<footer>
+  © Dev.Giga — Web Development Service
+</footer>
+
+</body>
+</html>
